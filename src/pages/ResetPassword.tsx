@@ -12,9 +12,23 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Ensure we have a valid session from the recovery link
+    const hash = window.location.hash || "";
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.replace('#', ''));
+      const access_token = params.get('access_token') || undefined;
+      const refresh_token = params.get('refresh_token') || undefined;
+      if (access_token && refresh_token) {
+        // Establish a session so updateUser works
+        supabase.auth.setSession({ access_token, refresh_token }).catch(() => {
+          // ignore; onAuthStateChange below may still catch recovery
+        });
+      }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === "PASSWORD_RECOVERY") {
-        // do nothing; user will set a new password below
+        // session is set by the recovery token; user will set a new password below
       }
     });
     return () => subscription.unsubscribe();
