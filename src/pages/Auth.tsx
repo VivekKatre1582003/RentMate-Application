@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -13,11 +13,19 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const location = useLocation();
 
   useEffect(() => {
+    // If the auth route is hit with a recovery hash, send to reset page
+    if (window.location.hash && window.location.hash.includes("type=recovery")) {
+      navigate("/reset-password", { replace: true });
+      return;
+    }
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      // Avoid redirecting to dashboard if this is a recovery flow
+      if (session && !(window.location.hash && window.location.hash.includes("type=recovery"))) {
         navigate("/dashboard");
       }
     });
@@ -25,7 +33,11 @@ const Auth = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (session) {
+        if (event === "PASSWORD_RECOVERY") {
+          navigate("/reset-password", { replace: true });
+          return;
+        }
+        if (session && !(window.location.hash && window.location.hash.includes("type=recovery"))) {
           navigate("/dashboard");
         }
       }
