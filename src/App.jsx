@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -56,7 +57,7 @@ export default App;
 // Redirect any recovery links to the reset password page while preserving the hash token
 function RecoveryRedirect() {
   const navigate = useNavigate();
-  React.useEffect(() => {
+  useEffect(() => {
     const hash = window.location.hash;
     const isRecovery = hash && hash.includes("type=recovery");
     const onResetPage = window.location.pathname.startsWith("/reset-password");
