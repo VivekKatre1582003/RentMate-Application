@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import Index from "./pages/Index";
 import Browse from "./pages/Browse";
@@ -32,6 +32,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <RecoveryRedirect />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/browse" element={<Browse />} />
@@ -51,3 +52,17 @@ const App = () => (
 );
 
 export default App;
+
+// Redirect any recovery links to the reset password page while preserving the hash token
+function RecoveryRedirect() {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const hash = window.location.hash;
+    const isRecovery = hash && hash.includes("type=recovery");
+    const onResetPage = window.location.pathname.startsWith("/reset-password");
+    if (isRecovery && !onResetPage) {
+      navigate(`/reset-password${hash}`, { replace: true });
+    }
+  }, [navigate]);
+  return null;
+}
