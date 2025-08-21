@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase, refreshSchemaCache } from "@/integrations/supabase/client";
+import { supabase, ensureUserProfile, refreshSchemaCache } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,24 +16,82 @@ const Auth = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
+    // Handle auth callback from email verification or password recovery
+    const handleAuthCallback = async () => {
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+      const type = searchParams.get('type');
+      const error = searchParams.get('error');
+      const errorDescription = searchParams.get('error_description');
+
+      if (error) {
+        toast.error(errorDescription || 'Authentication error occurred');
+        return;
       }
-    });
+
+      if (accessToken && refreshToken) {
+        if (type === 'recovery') {
+          // Redirect to reset password page
+          navigate('/reset-password', { 
+            state: { 
+              accessToken, 
+              refreshToken, 
+              type: 'recovery' 
+            } 
+          });
+          return;
+        }
+
+        if (type === 'signup') {
+          // Handle email verification
+          try {
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (sessionError) throw sessionError;
+
+            if (data.session) {
+              // Ensure user profile exists
+              await ensureUserProfile(data.session.user.id);
+              await refreshSchemaCache();
+              
+              toast.success("Email verified successfully! Welcome to RentMate!");
+              navigate("/dashboard");
+            }
+          } catch (err) {
+            console.error('Session setup error:', err);
+            toast.error('Failed to verify email. Please try again.');
+          }
+          return;
+        }
+      }
+
+      // Check if user is already logged in
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          navigate("/dashboard");
+        }
+      });
+    };
+
+    handleAuthCallback();
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          // Ensure user profile exists
+          await ensureUserProfile(session.user.id);
+          await refreshSchemaCache();
           navigate("/dashboard");
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [searchParams, navigate]);
 
   const handleEmailSignIn = async (e) => {
     e.preventDefault();

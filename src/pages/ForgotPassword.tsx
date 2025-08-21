@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import PasswordResetTest from "@/components/PasswordResetTest";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -18,7 +19,8 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/reset-password`;
+      // Use the auth callback route for proper handling
+      const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       });
@@ -75,6 +77,11 @@ const ForgotPassword = () => {
                   Back to sign in
                 </Link>
               </div>
+            </div>
+
+            {/* Temporary test component - remove after testing */}
+            <div className="mt-8">
+              <PasswordResetTest />
             </div>
           </div>
         </div>
